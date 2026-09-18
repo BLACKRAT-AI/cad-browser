@@ -1,0 +1,17 @@
+# Build output and dependencies. The CEF distribution is 431 MB and build.ps1
+# downloads and checksums it on first run, so it is fetched rather than stored.
+/third_party/
+/out/
+/build/
+/lib/
+
+# Local editor and OS noise
+.vs/
+.vscode/
+*.user
+Thumbs.db
+desktop.ini
+
+# Captures and scratch output from the benchmarks
+*.csv.bak
+/tools/bench/*.local.*

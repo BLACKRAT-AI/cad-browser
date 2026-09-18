@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>caps starting</title>
+<style>
+  html, body { margin: 0; background: #101214; color: #d8dde2;
+               font: 13px/1.6 Consolas, monospace; padding: 16px; }
+  b { color: #7fb2ff; }
+</style>
+</head>
+<body>
+<pre id="out">reading...</pre>
+<script>
+// The ceilings a browser imposes, as opposed to what it happens to be using.
+//
+// These are the numbers that do not move with the session: how much JavaScript
+// heap a tab may have before it is killed, how much memory the browser admits
+// the machine has, what the graphics stack will accept. Reported through
+// document.title in rotating chunks, because a Win32 window title is the only
+// channel an external sampler can read from any browser without a debugging
+// port, and it is too short to carry all of this at once.
+(function () {
+  'use strict';
+
+  function mb(bytes) { return Math.round(bytes / (1024 * 1024)); }
+
+  var facts = {};
+
+  // V8 heap ceiling. This is the number that decides whether a large CAD
+  // assembly survives or the tab dies with "V8 javascript OOM".
+  if (window.performance && performance.memory) {
+    facts.jsHeapLimitMB = mb(performance.memory.jsHeapSizeLimit);
+  } else {
+    facts.jsHeapLimitMB = -1;
+  }
+
+  // What the browser tells pages about the machine. Chrome clamps
+  // deviceMemory at 8 GB and hardwareConcurrency is capped on some builds.
+  facts.deviceMemoryGB = navigator.deviceMemory || -1;
+  facts.cores = navigator.hardwareConcurrency || -1;
+  facts.dpr = window.devicePixelRatio || 1;
+
+  var canvas = document.createElement('canvas');
+  var gl = canvas.getContext('webgl2') || canvas.getContext('webgl');
+  if (gl) {
+    facts.maxTexture = gl.getParameter(gl.MAX_TEXTURE_SIZE);
+    facts.maxRenderbuffer = gl.getParameter(gl.MAX_RENDERBUFFER_SIZE);
+    facts.maxViewport = gl.getParameter(gl.MAX_VIEWPORT_DIMS)[0];
+    facts.maxVertexAttribs = gl.getParameter(gl.MAX_VERTEX_ATTRIBS);
+    facts.maxTextureUnits = gl.getParameter(gl.MAX_COMBINED_TEXTURE_IMAGE_UNITS);
+    var dbg = gl.getExtension('WEBGL_debug_renderer_info');
+    facts.renderer = dbg ? gl.getParameter(dbg.UNMASKED_RENDERER_WEBGL) : 'masked';
+    facts.webgl2 = !!canvas.getContext('webgl2');
+  } else {
+    facts.renderer = 'no-webgl';
+  }
+
+  // How many simultaneous WebGL contexts the browser will hand out before it
+  // starts dropping the oldest. A CAD page with several viewports hits this.
+  (function () {
+    var held = [];
+    for (var i = 0; i < 64; i++) {
+      var c = document.createElement('canvas');
+      c.width = 32; c.height = 32;
+      var ctx = c.getContext('webgl2');
+      if (!ctx || ctx.isContextLost()) { break; }
+      held.push(ctx);
+    }
+    var alive = 0;
+    for (var k = 0; k < held.length; k++) {
+      if (!held[k].isContextLost()) { alive++; }
+    }
+    facts.maxGlContexts = alive;
+  })();
+
+  facts.quotaGB = -1;
+  var done = function () { start(); };
+  if (navigator.storage && navigator.storage.estimate) {
+    navigator.storage.estimate().then(function (e) {
+      facts.quotaGB = Math.round((e.quota || 0) / (1024 * 1024 * 1024));
+      done();
+    }, done);
+  } else {
+    done();
+  }
+
+  function start() {
+    document.getElementById('out').textContent =
+      Object.keys(facts).map(function (k) { return k + ' = ' + facts[k]; }).join('\n');
+
+    var chunks = [
+      'caps A heap=' + facts.jsHeapLimitMB +
+        ' devmem=' + facts.deviceMemoryGB +
+        ' cores=' + facts.cores +
+        ' quota=' + facts.quotaGB +
+        ' dpr=' + facts.dpr,
+      'caps B tex=' + facts.maxTexture +
+        ' rb=' + facts.maxRenderbuffer +
+        ' vp=' + facts.maxViewport +
+        ' units=' + facts.maxTextureUnits +
+        ' ctx=' + facts.maxGlContexts +
+        ' gl2=' + (facts.webgl2 ? 1 : 0)
+    ];
+    var i = 0;
+    setInterval(function () {
+      document.title = chunks[i % chunks.length];
+      i++;
+    }, 700);
+    document.title = chunks[0];
+  }
+})();
+</script>
+</body>
+</html>

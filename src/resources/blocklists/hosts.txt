@@ -1,0 +1,252 @@
+# CAD Browser - built-in host blocklist
+#
+# One host per line. "#" starts a comment. Hosts-file lines ("0.0.0.0 host")
+# are also accepted so a list copied from elsewhere works unchanged.
+#
+# A listed domain also covers its subdomains: "doubleclick.net" blocks
+# "stats.g.doubleclick.net". First-party requests are never blocked whatever
+# this file says, so a site can never break itself through an entry here.
+#
+# This is a curated starting list of well-known advertising, analytics and
+# session-recording networks. It is deliberately not a 100,000-entry dump:
+# every entry here is one that is safe to block outright, and the size keeps
+# startup parsing to a few milliseconds.
+#
+# To add your own, put them in:
+#   %LOCALAPPDATA%\CADBrowser\blocklist.txt
+# That file is read after this one and survives upgrades.
+#
+# Deliberately NOT blocked, because blocking them breaks real work:
+#   googleapis.com, gstatic.com, jsdelivr.net, unpkg.com, cloudflare.com,
+#   cdnjs.cloudflare.com, fontawesome.com, and any first-party CDN.
+
+# ---- Google advertising and measurement ----
+doubleclick.net
+googlesyndication.com
+googleadservices.com
+google-analytics.com
+googletagmanager.com
+googletagservices.com
+adservice.google.com
+pagead2.googlesyndication.com
+partner.googleadservices.com
+analytics.google.com
+app-measurement.com
+crashlytics.com
+
+# ---- Meta ----
+connect.facebook.net
+pixel.facebook.com
+an.facebook.com
+graph.facebook.com
+business.facebook.com
+facebook.net
+
+# ---- Microsoft advertising and telemetry endpoints ----
+bat.bing.com
+ads.microsoft.com
+clarity.ms
+c.bing.com
+vortex.data.microsoft.com
+browser.events.data.msn.com
+
+# ---- Amazon advertising ----
+amazon-adsystem.com
+assoc-amazon.com
+adtago.s3.amazonaws.com
+
+# ---- Major ad exchanges and DSPs ----
+adnxs.com
+adsrvr.org
+rubiconproject.com
+pubmatic.com
+openx.net
+casalemedia.com
+criteo.com
+criteo.net
+smartadserver.com
+sharethrough.com
+33across.com
+indexww.com
+districtm.io
+gumgum.com
+sovrn.com
+lijit.com
+media.net
+adform.net
+adroll.com
+bidswitch.net
+contextweb.com
+teads.tv
+spotxchange.com
+spotx.tv
+tremorhub.com
+yieldmo.com
+triplelift.com
+rhythmone.com
+onetag-sys.com
+improvedigital.com
+adkernel.com
+adlightning.com
+servenobid.com
+zeta.com
+zemanta.com
+
+# ---- Analytics and product measurement ----
+scorecardresearch.com
+quantserve.com
+quantcount.com
+chartbeat.com
+chartbeat.net
+parsely.com
+parse.ly
+mixpanel.com
+amplitude.com
+segment.com
+segment.io
+heapanalytics.com
+kissmetrics.com
+kissmetrics.io
+statcounter.com
+hotjar.com
+hotjar.io
+mouseflow.com
+crazyegg.com
+fullstory.com
+logrocket.com
+logrocket.io
+smartlook.com
+inspectlet.com
+luckyorange.com
+clicktale.net
+contentsquare.net
+decibelinsight.net
+sessioncam.com
+quantummetric.com
+glassboxdigital.io
+plausible.io
+matomo.cloud
+mixpanel.net
+
+# ---- Attribution and tag management ----
+branch.io
+appsflyer.com
+adjust.com
+kochava.com
+singular.net
+tenjin.io
+tapad.com
+liveramp.com
+rlcdn.com
+crwdcntrl.net
+bluekai.com
+demdex.net
+everesttech.net
+omtrdc.net
+adobedtm.com
+2o7.net
+tealiumiq.com
+ensighten.com
+
+# ---- Content recommendation and native advertising ----
+taboola.com
+taboolasyndication.com
+outbrain.com
+zergnet.com
+revcontent.com
+mgid.com
+plista.com
+dianomi.com
+nativo.com
+adblade.com
+
+# ---- Consent and paywall trackers ----
+onetrust.com
+cookielaw.org
+trustarc.com
+quantcast.mgr.consensu.org
+privacy-mgmt.com
+sourcepoint.mgr.consensu.org
+
+# ---- Push, popup and affiliate networks ----
+propellerads.com
+popads.net
+popcash.net
+adcash.com
+exoclick.com
+juicyads.com
+trafficjunky.com
+hilltopads.net
+adsterra.com
+onclickalgo.com
+clickadu.com
+shareasale.com
+linksynergy.com
+awin1.com
+cj.com
+impactradius-event.com
+prf.hn
+skimresources.com
+narrativ.com
+viglink.com
+
+# ---- Video and audio advertising ----
+innovid.com
+flashtalking.com
+serving-sys.com
+adsafeprotected.com
+moatads.com
+doubleverify.com
+ias-dv.net
+pixel.adsafeprotected.com
+
+# ---- Error and performance beacons commonly loaded third-party ----
+bugsnag.com
+newrelic.com
+nr-data.net
+mixpanel.com
+raygun.io
+trackjs.com
+loggly.com
+rollbar.com
+
+# ---- Social widgets that track across sites ----
+addthis.com
+sharethis.com
+addtoany.com
+po.st
+disqus.com
+disquscdn.com
+
+# ---- Miscellaneous well-known trackers ----
+optimizely.com
+visualwebsiteoptimizer.com
+dynamicyield.com
+monetate.net
+mparticle.com
+bounceexchange.com
+exponea.com
+klaviyo.com
+attentivemobile.com
+listrakbi.com
+bronto.com
+marketo.net
+marketo.com
+pardot.com
+hs-analytics.net
+hsforms.net
+hubspot.com
+drift.com
+intercom.io
+zdassets.com
+zopim.com
+livechatinc.com
+tawk.to
+yandex.ru
+mc.yandex.ru
+top-fwz1.mail.ru
+vk.com
+hm.baidu.com
+cnzz.com
+umeng.com
+talkingdata.com

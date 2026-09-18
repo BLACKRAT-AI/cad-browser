@@ -1,0 +1,344 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Stats</title>
+<style>
+/* Self-contained on purpose: this is the one page that has to paint before
+   anything else is ready, and it must never wait on a stylesheet to do it. */
+html, body {
+  margin: 0;
+  padding: 0;
+  height: 100%;
+  background: transparent;
+  overflow: hidden;
+  user-select: none;
+  cursor: default;
+}
+
+#bar {
+  height: 100%;
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  gap: 0;
+  font: 11px/1 "Cascadia Mono", Consolas, "Courier New", monospace;
+  color: #E6E8EA;
+  background: rgba(20, 22, 24, 0.88);
+  border-top: 1px solid rgba(255, 255, 255, 0.07);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.07);
+  padding: 0 4px;
+  white-space: nowrap;
+  cursor: grab;
+}
+
+#bar.dragging {
+  cursor: grabbing;
+  background: rgba(20, 22, 24, 0.97);
+}
+
+/* Docked left or right it is a full-height rail: a single line of text cannot
+   be read sideways, so the segments stack instead. Kept as narrow and as
+   quiet as the numbers allow. */
+#bar.vertical {
+  display: block;
+  padding: 6px 9px;
+  border: 0;
+  border-right: 1px solid rgba(255, 255, 255, 0.07);
+  line-height: 1.55;
+  overflow: hidden;
+}
+
+.seg {
+  display: flex;
+  align-items: baseline;
+  gap: 5px;
+  padding: 0 11px;
+  border-right: 1px solid rgba(255, 255, 255, 0.09);
+}
+
+.seg:last-child {
+  border-right: 0;
+}
+
+/* In the rail each segment is its own line: a muted label above, the value
+   below, so the numbers line up down the left edge and stay scannable. */
+#bar.vertical .seg {
+  display: block;
+  padding: 0 0 5px;
+  border-right: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+#bar.vertical .seg .k {
+  display: block;
+  font-size: 9px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+#bar.vertical .seg .u {
+  display: block;
+  font-size: 10px;
+}
+
+/* The grip is the drag affordance, and the only part that looks grabbable. */
+#grip {
+  flex: 0 0 auto;
+  padding: 0 7px 2px;
+  color: #5C6266;
+  letter-spacing: 1px;
+  font-size: 13px;
+}
+
+#bar.vertical #grip {
+  display: block;
+  text-align: center;
+  padding: 0 0 3px;
+}
+
+.k {
+  color: #7F868C;
+}
+
+.v {
+  color: #F2F4F6;
+  font-weight: 600;
+}
+
+.u {
+  color: #7F868C;
+}
+
+.warn { color: #F2B33D; }
+.bad { color: #E5484D; }
+.good { color: #5BC47E; }
+.dim { color: #5C6266; }
+
+#hint {
+  color: #5C6266;
+  padding-left: 10px;
+}
+</style>
+</head>
+<body>
+<div id="bar"><span id="grip">::</span><span id="empty" class="dim">collecting...</span></div>
+<script>
+(function () {
+  'use strict';
+
+  var bar = document.getElementById('bar');
+  // The bar's own rectangle in screen coordinates, sent with every sample.
+  // A pointer event only gives screen positions, so this is what turns a drop
+  // point into "which edge did they mean".
+  var self = null;
+  var currentEdge = 'bottom';
+
+  function send(name, payload) {
+    if (window.cadBrowser && typeof window.cadBrowser.send === 'function') {
+      window.cadBrowser.send(name, payload);
+    }
+  }
+
+  function num(value, decimals) {
+    if (typeof value !== 'number' || !isFinite(value)) {
+      return '-';
+    }
+    return value.toFixed(decimals === undefined ? 0 : decimals);
+  }
+
+  function esc(text) {
+    return String(text).replace(/[&<>]/g, function (c) {
+      return c === '&' ? '&amp;' : c === '<' ? '&lt;' : '&gt;';
+    });
+  }
+
+  // Keeps the adapter name short so the bar's width never jumps between
+  // samples.
+  function shortGpu(name) {
+    if (!name) {
+      return 'GPU';
+    }
+    return name
+      .replace(/NVIDIA GeForce /i, '')
+      .replace(/AMD Radeon /i, '')
+      .replace(/Intel\(R\) /i, 'Intel ')
+      .replace(/ Laptop GPU/i, '')
+      .replace(/ Graphics/i, '')
+      .slice(0, 20);
+  }
+
+  function seg(label, value, unit, cls) {
+    return '<span class="seg">' +
+      '<span class="k">' + esc(label) + '</span>' +
+      '<span class="' + (cls || 'v') + '">' + esc(value) + '</span>' +
+      (unit ? '<span class="u">' + esc(unit) + '</span>' : '') +
+      '</span>';
+  }
+
+  // ---- dragging -----------------------------------------------------------
+  //
+  // The bar reports the edge it was dropped nearest to; the browser process
+  // owns the actual position. Pointer capture keeps the move events coming
+  // after the pointer leaves the bar, which it does immediately, because the
+  // bar is only 26 pixels tall.
+  var dragging = false;
+  var moved = false;
+
+  // Works out which edge of the *window* a drop landed nearest to. The bar
+  // knows where it is on screen, and where it sits relative to the page, so
+  // the window rectangle can be reconstructed from the two.
+  function edgeNearest(screenX, screenY) {
+    if (!self || !self.w || !self.h) {
+      return currentEdge;
+    }
+    // Reconstruct the window from the bar's own rectangle and its edge.
+    var win;
+    if (currentEdge === 'bottom') {
+      win = { x: self.x, y: self.y - self.h * 20, w: self.w, h: self.h * 21 };
+    } else if (currentEdge === 'top') {
+      win = { x: self.x, y: self.y, w: self.w, h: self.h * 21 };
+    } else if (currentEdge === 'left') {
+      win = { x: self.x, y: self.y, w: self.w * 8, h: self.h };
+    } else {
+      win = { x: self.x - self.w * 7, y: self.y, w: self.w * 8, h: self.h };
+    }
+
+    var fx = (screenX - win.x) / win.w;
+    var fy = (screenY - win.y) / win.h;
+    var distances = [
+      { edge: 'left', d: fx },
+      { edge: 'right', d: 1 - fx },
+      { edge: 'top', d: fy },
+      { edge: 'bottom', d: 1 - fy }
+    ];
+    distances.sort(function (a, b) { return a.d - b.d; });
+    return distances[0].edge;
+  }
+
+  bar.addEventListener('pointerdown', function (event) {
+    if (event.button !== 0) {
+      return;
+    }
+    dragging = true;
+    moved = false;
+    bar.classList.add('dragging');
+    try { bar.setPointerCapture(event.pointerId); } catch (e) { }
+    event.preventDefault();
+  });
+
+  bar.addEventListener('pointermove', function (event) {
+    if (dragging) {
+      moved = true;
+    }
+  });
+
+  bar.addEventListener('pointerup', function (event) {
+    if (!dragging) {
+      return;
+    }
+    dragging = false;
+    bar.classList.remove('dragging');
+    try { bar.releasePointerCapture(event.pointerId); } catch (e) { }
+    if (moved) {
+      send('overlay.edge', { edge: edgeNearest(event.screenX, event.screenY) });
+    } else {
+      // A plain click changes nothing, but focus still has to go back to the
+      // page underneath.
+      send('overlay.edge', { edge: currentEdge });
+    }
+  });
+
+  // Always-available fallback: cycle the edges. Dragging depends on pointer
+  // capture behaving across view boundaries; this does not.
+  bar.addEventListener('dblclick', function () {
+    var order = ['bottom', 'top', 'right', 'left'];
+    var next = order[(order.indexOf(currentEdge) + 1) % order.length];
+    send('overlay.edge', { edge: next });
+  });
+
+  // ---- rendering ----------------------------------------------------------
+  window.cadOverlay = {
+    update: function (data) {
+      if (!data) {
+        return;
+      }
+      self = data.self || self;
+
+      if (data.edge && data.edge !== currentEdge) {
+        currentEdge = data.edge;
+      }
+      var vertical = currentEdge === 'left' || currentEdge === 'right';
+      bar.classList.toggle('vertical', vertical);
+
+      var show = data.show || {};
+      var parts = ['<span id="grip">' + (vertical ? '&#8942;' : '::') + '</span>'];
+
+      if (show.fps !== false) {
+        var f = data.frame || {};
+        if (f.valid && f.fps > 0) {
+          var cls = f.fps < 24 ? 'bad' : (f.fps < 50 ? 'warn' : 'v');
+          parts.push(seg('FPS', num(f.fps), num(f.ms, 1) + ' ms', cls));
+        } else {
+          parts.push(seg('FPS', '-', 'idle', 'dim'));
+        }
+      }
+
+      if (show.gpu !== false) {
+        var g = data.gpu || {};
+        if (!g.valid) {
+          parts.push(seg('GPU', '-', '', 'dim'));
+        } else if (!g.counters) {
+          parts.push(seg(shortGpu(g.name), '-', 'no counters', 'dim'));
+        } else {
+          parts.push(seg(shortGpu(g.name), num(g.percent) + '%',
+                         g.vramUsed + ' / ' + g.vramTotal));
+        }
+      }
+
+      if (show.memory !== false) {
+        var m = data.memory || {};
+        parts.push(seg('TAB', m.tab, ''));
+        parts.push(seg('BROWSER', m.browser, ''));
+        parts.push(seg('SYS', m.systemUsed, '/ ' + m.systemTotal));
+      }
+
+      if (show.cpu !== false) {
+        var c = data.cpu || {};
+        if (c.valid) {
+          parts.push(seg('CPU', num(c.browser, 1) + '%',
+                         'sys ' + num(c.system, 0) + '%'));
+        }
+      }
+
+      if (show.tabs !== false) {
+        var t = data.tabs || {};
+        var tabText = String(t.total);
+        if (t.sleeping) {
+          tabText += ' (' + t.sleeping + ' asleep)';
+        }
+        parts.push(seg('TABS', tabText, ''));
+        if (t.blocked) {
+          parts.push(seg('BLOCKED', String(t.blocked), ''));
+        }
+      }
+
+      var gpuNote = (data.gpu || {}).mismatch;
+      if (gpuNote) {
+        parts.push('<span class="seg warn">' + esc(gpuNote) + '</span>');
+      }
+
+      bar.innerHTML = parts.join('');
+
+      if (typeof data.opacity === 'number') {
+        var a = Math.max(0.2, Math.min(1, data.opacity));
+        bar.style.background = 'rgba(20, 22, 24, ' + a.toFixed(2) + ')';
+      }
+    }
+  };
+})();
+</script>
+</body>
+</html>

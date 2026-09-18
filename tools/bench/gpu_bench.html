@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>bench starting</title>
+<style>
+  html, body { margin: 0; height: 100%; background: #101214; overflow: hidden; }
+  canvas { display: block; width: 100%; height: 100%; }
+</style>
+</head>
+<body>
+<canvas id="gl"></canvas>
+<script>
+// A fixed workload, identical in any browser that can run WebGL2.
+//
+// The point is comparability, not realism: the same number of draw calls, the
+// same triangle count and the same per-frame JavaScript every run, so that a
+// difference in CPU, GPU or memory between two browsers is a property of the
+// browser rather than of what the page decided to do that day.
+//
+// Results are published in document.title because that is the one channel an
+// external sampler can read from any browser without a debugging port, an
+// extension or a network round trip.
+(function () {
+  'use strict';
+
+  var INSTANCES = 24000;     // draw calls per frame
+  var SEGMENTS = 24;         // triangles per instance
+  var JS_WORK = 400000;      // fixed arithmetic per frame, to load the main thread
+  var REPORT_MS = 500;
+
+  var canvas = document.getElementById('gl');
+  var gl = canvas.getContext('webgl2', { antialias: true, powerPreference: 'high-performance' });
+  if (!gl) {
+    document.title = 'bench error no-webgl2';
+    return;
+  }
+
+  function resize() {
+    var dpr = window.devicePixelRatio || 1;
+    canvas.width = Math.floor(canvas.clientWidth * dpr);
+    canvas.height = Math.floor(canvas.clientHeight * dpr);
+    gl.viewport(0, 0, canvas.width, canvas.height);
+  }
+  window.addEventListener('resize', resize);
+
+  var vs = [
+    '#version 300 es',
+    'precision highp float;',
+    'in vec2 aPos;',
+    'in vec3 aOffset;',
+    'uniform float uTime;',
+    'out vec3 vColor;',
+    'void main() {',
+    '  float a = uTime * 0.6 + aOffset.z * 6.2831;',
+    '  mat2 rot = mat2(cos(a), -sin(a), sin(a), cos(a));',
+    '  vec2 p = rot * aPos * 0.035;',
+    '  gl_Position = vec4(p + aOffset.xy, 0.0, 1.0);',
+    '  vColor = vec3(0.35 + 0.65 * aOffset.z, 0.55, 0.9 - 0.4 * aOffset.z);',
+    '}'
+  ].join('\n');
+
+  var fs = [
+    '#version 300 es',
+    'precision highp float;',
+    'in vec3 vColor;',
+    'out vec4 outColor;',
+    'void main() {',
+    '  outColor = vec4(vColor, 1.0);',
+    '}'
+  ].join('\n');
+
+  function compile(type, src) {
+    var s = gl.createShader(type);
+    gl.shaderSource(s, src);
+    gl.compileShader(s);
+    if (!gl.getShaderParameter(s, gl.COMPILE_STATUS)) {
+      document.title = 'bench error shader';
+      throw new Error(gl.getShaderInfoLog(s));
+    }
+    return s;
+  }
+
+  var prog = gl.createProgram();
+  gl.attachShader(prog, compile(gl.VERTEX_SHADER, vs));
+  gl.attachShader(prog, compile(gl.FRAGMENT_SHADER, fs));
+  gl.linkProgram(prog);
+  gl.useProgram(prog);
+
+  // One fan of triangles, reused by every instance.
+  var verts = [0, 0];
+  for (var i = 0; i <= SEGMENTS; i++) {
+    var t = (i / SEGMENTS) * Math.PI * 2;
+    verts.push(Math.cos(t), Math.sin(t));
+  }
+  var vbo = gl.createBuffer();
+  gl.bindBuffer(gl.ARRAY_BUFFER, vbo);
+  gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(verts), gl.STATIC_DRAW);
+  var aPos = gl.getAttribLocation(prog, 'aPos');
+  gl.enableVertexAttribArray(aPos);
+  gl.vertexAttribPointer(aPos, 2, gl.FLOAT, false, 0, 0);
+
+  var offsets = new Float32Array(INSTANCES * 3);
+  for (var k = 0; k < INSTANCES; k++) {
+    offsets[k * 3 + 0] = (k % 80) / 40 - 1.0;
+    offsets[k * 3 + 1] = Math.floor(k / 80) / 25 - 1.0;
+    offsets[k * 3 + 2] = (k % 97) / 97;
+  }
+  var obo = gl.createBuffer();
+  gl.bindBuffer(gl.ARRAY_BUFFER, obo);
+  gl.bufferData(gl.ARRAY_BUFFER, offsets, gl.STATIC_DRAW);
+  var aOffset = gl.getAttribLocation(prog, 'aOffset');
+  gl.enableVertexAttribArray(aOffset);
+  gl.vertexAttribPointer(aOffset, 3, gl.FLOAT, false, 0, 0);
+  gl.vertexAttribDivisor(aOffset, 1);
+
+  var uTime = gl.getUniformLocation(prog, 'uTime');
+  resize();
+
+  var frames = [];
+  var last = 0;
+  var lastReport = 0;
+  var total = 0;
+  var sink = 0;
+
+  function frame(now) {
+    if (last !== 0) {
+      var dt = now - last;
+      if (dt > 0 && dt < 2000) { frames.push(dt); }
+    }
+    last = now;
+    if (lastReport === 0) { lastReport = now; }
+
+    // Fixed main-thread work, so the comparison is not purely a GPU test.
+    for (var j = 0; j < JS_WORK; j++) {
+      sink += Math.sqrt(j) * 0.000001;
+    }
+
+    gl.clearColor(0.06, 0.07, 0.08, 1);
+    gl.clear(gl.COLOR_BUFFER_BIT);
+    gl.uniform1f(uTime, now * 0.001);
+    gl.drawArraysInstanced(gl.TRIANGLE_FAN, 0, SEGMENTS + 2, INSTANCES);
+
+    if (now - lastReport >= REPORT_MS) {
+      var elapsed = now - lastReport;
+      if (frames.length > 0) {
+        var sorted = frames.slice().sort(function (a, b) { return a - b; });
+        var fps = (frames.length * 1000) / elapsed;
+        var p50 = sorted[Math.floor(sorted.length * 0.5)];
+        var p99 = sorted[Math.min(sorted.length - 1, Math.floor(sorted.length * 0.99))];
+        total += frames.length;
+        document.title = 'bench fps=' + fps.toFixed(1) +
+                         ' p50=' + p50.toFixed(2) +
+                         ' p99=' + p99.toFixed(2) +
+                         ' n=' + total +
+                         ' s=' + (sink > 1e12 ? 1 : 0);
+      }
+      frames.length = 0;
+      lastReport = now;
+    }
+    requestAnimationFrame(frame);
+  }
+  requestAnimationFrame(frame);
+})();
+</script>
+</body>
+</html>

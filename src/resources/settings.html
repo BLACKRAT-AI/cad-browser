@@ -1,0 +1,199 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Settings</title>
+<link rel="stylesheet" href="base.css">
+</head>
+<body>
+<div class="page">
+  <h1>Settings</h1>
+  <p>Stored in <code>%LOCALAPPDATA%\CADBrowser\settings.json</code>. Changes
+     apply immediately.</p>
+  <div id="content"><div class="empty">Loading...</div></div>
+</div>
+
+<script src="cad.js"></script>
+<script>
+(function () {
+  'use strict';
+
+  var el = window.cad.el;
+  var content = document.getElementById('content');
+  var applying = false;
+
+  function set(key, value) {
+    if (applying) {
+      return;
+    }
+    window.cad.send('settings.set', { key: key, value: value });
+  }
+
+  function section(title) {
+    content.appendChild(el('h2', null, title));
+    var card = el('div', 'card');
+    content.appendChild(card);
+    return card;
+  }
+
+  function control(card, label, description, node) {
+    var row = el('div', 'row');
+    var text = el('div', 'label');
+    text.appendChild(el('div', null, label));
+    if (description) {
+      text.appendChild(el('div', 'subtle', description));
+    }
+    text.style.flex = '1';
+    row.appendChild(text);
+    var holder = el('div', 'control');
+    holder.appendChild(node);
+    row.appendChild(holder);
+    card.appendChild(row);
+  }
+
+  function toggle(key, value) {
+    var input = el('input');
+    input.type = 'checkbox';
+    input.checked = !!value;
+    input.addEventListener('change', function () { set(key, input.checked); });
+    return input;
+  }
+
+  function choice(key, value, options) {
+    var select = el('select');
+    options.forEach(function (option) {
+      var node = el('option', null, option[1]);
+      node.value = option[0];
+      if (option[0] === value) {
+        node.selected = true;
+      }
+      select.appendChild(node);
+    });
+    select.addEventListener('change', function () { set(key, select.value); });
+    return select;
+  }
+
+  function text(key, value, width) {
+    var input = el('input');
+    input.type = 'text';
+    input.value = value || '';
+    input.style.width = (width || 280) + 'px';
+    input.addEventListener('change', function () { set(key, input.value); });
+    return input;
+  }
+
+  function number(key, value, min, max) {
+    var input = el('input');
+    input.type = 'number';
+    input.value = value;
+    input.min = min;
+    input.max = max;
+    input.style.width = '80px';
+    input.addEventListener('change', function () {
+      set(key, parseInt(input.value, 10));
+    });
+    return input;
+  }
+
+  window.cadPage = {
+    render: function (data) {
+      applying = true;
+      content.textContent = '';
+
+      var general = data.general || {};
+      var performance = data.performance || {};
+      var privacy = data.privacy || {};
+      var overlay = data.overlay || {};
+
+      var g = section('General');
+      control(g, 'On startup', null,
+        choice('startup_mode', general.startup_mode, [
+          ['restore', 'Reopen the last session'],
+          ['newtab', 'Open the new tab page'],
+          ['homepage', 'Open a specific page']
+        ]));
+      control(g, 'Home page', 'Used when startup is set to a specific page.',
+        text('homepage', general.homepage));
+      control(g, 'Search', 'Use %s where the query belongs.',
+        text('search_url', general.search_url, 320));
+      control(g, 'Theme', null,
+        choice('theme', general.theme, [
+          ['system', 'Follow Windows'],
+          ['light', 'Light'],
+          ['dark', 'Dark']
+        ]));
+      control(g, 'Hide the toolbar until needed',
+        'Tabs and the address bar float above the page and appear when the ' +
+        'pointer reaches the top edge. Move further into the bar and the ' +
+        'buttons appear. Turn off for a toolbar that is always visible.',
+        toggle('chrome_auto_hide', general.chrome_auto_hide));
+
+      var p = section('Performance');
+      control(p, 'Prefer the high-performance GPU',
+        'Asks Windows to run CAD Browser on the discrete adapter. Applies to ' +
+        'new processes.',
+        toggle('gpu_prefer_high_performance',
+               performance.gpu_prefer_high_performance));
+      control(p, 'Force hardware acceleration',
+        'Ignores Chromium’s GPU blocklist. That list exists because some ' +
+        'driver and hardware combinations crash; turn this on only if you ' +
+        'know yours is fine.',
+        toggle('force_hardware_acceleration',
+               performance.force_hardware_acceleration));
+      control(p, 'Uncapped frame rate by default',
+        'Removes the compositor frame cap. Useful for benchmarking, wasteful ' +
+        'for everything else.',
+        toggle('uncapped_fps_default', performance.uncapped_fps_default));
+      control(p, 'Put idle tabs to sleep',
+        'Frees a sleeping tab’s memory and reloads it when you return.',
+        toggle('discard_enabled', performance.discard_enabled));
+      control(p, 'Sleep after (minutes idle)', null,
+        number('discard_idle_minutes', performance.discard_idle_minutes, 1, 1440));
+      control(p, 'Only once this many tabs are open', null,
+        number('discard_tab_count', performance.discard_tab_count, 2, 1000));
+      control(p, 'Cache location',
+        'Empty uses %LOCALAPPDATA%\\CADBrowser\\Cache. Takes effect on restart.',
+        text('cache_path', performance.cache_path, 320));
+
+      var v = section('Privacy');
+      control(v, 'Block ad and tracker hosts',
+        'Blocks known third-party hosts. First-party requests are never ' +
+        'blocked, so a site cannot break itself this way.',
+        toggle('blocklist_enabled', privacy.blocklist_enabled));
+      if (privacy.allowed_sites && privacy.allowed_sites.length) {
+        control(v, 'Sites you have allowed',
+          privacy.allowed_sites.join(', '), el('span', 'subtle',
+            privacy.allowed_sites.length + ' site(s)'));
+      }
+
+      var o = section('Stats overlay');
+      control(o, 'Edge',
+        'You can also drag the bar to an edge, or double-click it to cycle.',
+        choice('overlay_position', overlay.position, [
+          ['bottom', 'Bottom'],
+          ['top', 'Top'],
+          ['left', 'Left'],
+          ['right', 'Right']
+        ]));
+      control(o, 'Opacity (%)', null,
+        number('overlay_opacity', overlay.opacity, 20, 100));
+      control(o, 'Show frame rate', null,
+        toggle('overlay_show_fps', overlay.show_fps));
+      control(o, 'Show GPU', null,
+        toggle('overlay_show_gpu', overlay.show_gpu));
+      control(o, 'Show memory', null,
+        toggle('overlay_show_memory', overlay.show_memory));
+      control(o, 'Show CPU', null,
+        toggle('overlay_show_cpu', overlay.show_cpu));
+      control(o, 'Show tabs', null,
+        toggle('overlay_show_tabs', overlay.show_tabs));
+
+      applying = false;
+    }
+  };
+
+  window.cad.send('settings.request', {});
+})();
+</script>
+</body>
+</html>

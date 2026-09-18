@@ -1,0 +1,246 @@
+/* CAD Browser - shared styles for every cad:// page.
+ *
+ * The tokens mirror ui/theme.cc. If a colour changes there it changes here;
+ * nothing else in the internal pages writes a literal colour.
+ */
+
+:root {
+  --bg: #F5F6F7;
+  --surface: #FFFFFF;
+  --surface-2: #ECEEF0;
+  --border: #D9DCE0;
+  --text: #1B1D1F;
+  --muted: #6B7178;
+  --accent: #2F6FED;
+  --warn: #F2B33D;
+  --bad: #E5484D;
+  --good: #2E9E5B;
+
+  --ui: "Segoe UI Variable Text", "Segoe UI", system-ui, sans-serif;
+  --mono: "Cascadia Mono", Consolas, "Courier New", monospace;
+  --radius: 4px;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #1B1D1F;
+    --surface: #242628;
+    --surface-2: #2E3134;
+    --border: #35393D;
+    --text: #E6E8EA;
+    --muted: #9AA0A6;
+  }
+}
+
+:root[data-theme="dark"] {
+  --bg: #1B1D1F;
+  --surface: #242628;
+  --surface-2: #2E3134;
+  --border: #35393D;
+  --text: #E6E8EA;
+  --muted: #9AA0A6;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font: 13px/1.55 var(--ui);
+  -webkit-font-smoothing: antialiased;
+}
+
+.page {
+  max-width: 860px;
+  margin: 0 auto;
+  padding: 40px 24px 64px;
+}
+
+h1 {
+  font-size: 19px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  margin: 0 0 4px;
+}
+
+h2 {
+  font-size: 13px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--muted);
+  margin: 32px 0 10px;
+}
+
+p {
+  margin: 0 0 10px;
+  color: var(--muted);
+  max-width: 68ch;
+}
+
+a {
+  color: var(--accent);
+  text-decoration: none;
+}
+
+a:hover {
+  text-decoration: underline;
+}
+
+code,
+.mono {
+  font: 12px/1.5 var(--mono);
+}
+
+.card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 4px 16px;
+}
+
+.row {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 11px 0;
+  border-bottom: 1px solid var(--border);
+}
+
+.row:last-child {
+  border-bottom: 0;
+}
+
+.row .label {
+  flex: 0 0 240px;
+  color: var(--muted);
+}
+
+.row .value {
+  flex: 1;
+  min-width: 0;
+  word-break: break-word;
+}
+
+.row .control {
+  margin-left: auto;
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12px;
+}
+
+th {
+  text-align: left;
+  font-weight: 600;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  font-size: 11px;
+  padding: 8px 10px;
+  border-bottom: 1px solid var(--border);
+}
+
+td {
+  padding: 9px 10px;
+  border-bottom: 1px solid var(--border);
+  vertical-align: top;
+}
+
+tr:last-child td {
+  border-bottom: 0;
+}
+
+.tag {
+  display: inline-block;
+  font-size: 11px;
+  font-weight: 600;
+  padding: 1px 7px;
+  border-radius: 10px;
+  background: var(--surface-2);
+  color: var(--muted);
+}
+
+.tag.good {
+  background: rgba(46, 158, 91, 0.14);
+  color: var(--good);
+}
+
+.tag.warn {
+  background: rgba(242, 179, 61, 0.16);
+  color: #9A6C00;
+}
+
+.tag.accent {
+  background: rgba(47, 111, 237, 0.14);
+  color: var(--accent);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) .tag.warn {
+    color: var(--warn);
+  }
+}
+
+.note {
+  border-left: 2px solid var(--warn);
+  background: var(--surface);
+  padding: 10px 14px;
+  margin: 8px 0;
+  color: var(--text);
+  border-radius: 0 var(--radius) var(--radius) 0;
+}
+
+.empty {
+  color: var(--muted);
+  padding: 28px 0;
+  text-align: center;
+}
+
+button,
+select,
+input[type="text"],
+input[type="number"] {
+  font: 12px var(--ui);
+  color: var(--text);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 5px 10px;
+}
+
+button {
+  cursor: pointer;
+}
+
+button:hover,
+select:hover {
+  background: var(--surface-2);
+}
+
+button.primary {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #fff;
+}
+
+input[type="checkbox"] {
+  width: 15px;
+  height: 15px;
+  accent-color: var(--accent);
+}
+
+.subtle {
+  color: var(--muted);
+  font-size: 12px;
+}

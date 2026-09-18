@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>heap starting</title>
+<style>
+  html, body { margin: 0; background: #101214; color: #d8dde2;
+               font: 14px/1.6 Consolas, monospace; padding: 16px; }
+</style>
+</head>
+<body>
+<pre id="out">allocating...</pre>
+<script>
+// The real JavaScript heap ceiling, found by walking into it.
+//
+// performance.memory.jsHeapSizeLimit is not trustworthy for this: Chrome
+// reports a rounded, clamped figure that was identical in both browsers even
+// though one of them is launched with a much larger --max-old-space-size. The
+// only honest answer is to keep allocating retained objects until the tab is
+// killed, and see how far it got.
+//
+// Progress goes into document.title on every step, so an external sampler
+// still has the last good figure after the renderer dies.
+(function () {
+  'use strict';
+
+  // Plain arrays of doubles, which live in V8's old space. Typed arrays are
+  // external memory and would not test the same limit.
+  var CHUNK_ELEMENTS = 8 * 1024 * 1024 / 8;   // ~8 MB of doubles
+  var CHUNK_MB = 8;
+  var CEILING_MB = 8192;                      // stop here; enough to settle it
+
+  var held = [];
+  var mb = 0;
+  var out = document.getElementById('out');
+
+  function step() {
+    var budget = 16;   // chunks per turn, then yield so the title can paint
+    while (budget-- > 0) {
+      if (mb >= CEILING_MB) {
+        document.title = 'heap done mb=' + mb + ' reason=ceiling';
+        out.textContent = 'reached ceiling at ' + mb + ' MB without dying';
+        return;
+      }
+      var block = new Array(CHUNK_ELEMENTS);
+      for (var i = 0; i < CHUNK_ELEMENTS; i += 512) { block[i] = i * 1.0001; }
+      held.push(block);
+      mb += CHUNK_MB;
+    }
+    document.title = 'heap growing mb=' + mb;
+    out.textContent = mb + ' MB allocated and retained';
+    setTimeout(step, 0);
+  }
+
+  document.title = 'heap growing mb=0';
+  setTimeout(step, 250);
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,79 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>GPU probe</title>
+<link rel="stylesheet" href="base.css">
+</head>
+<body>
+<div class="page">
+  <h1>GPU probe</h1>
+  <p>Asks a real graphics context which adapter is drawing. This is the only
+     way to know: the adapter Windows is asked for and the adapter actually
+     used can differ when an OEM control panel overrides the setting.</p>
+  <div class="card" id="result">
+    <div class="row"><div class="label">Status</div><div class="value">Running...</div></div>
+  </div>
+  <h2>WebGL parameters</h2>
+  <div class="card" id="details"></div>
+</div>
+<script src="cad.js"></script>
+<script>
+(function () {
+  'use strict';
+
+  var el = window.cad.el;
+  var row = window.cad.row;
+  var result = document.getElementById('result');
+  var details = document.getElementById('details');
+
+  result.textContent = '';
+
+  var canvas = document.createElement('canvas');
+  var gl = canvas.getContext('webgl2') || canvas.getContext('webgl');
+  if (!gl) {
+    row(result, 'Status', 'No WebGL context could be created');
+    row(result, 'Meaning',
+        'Hardware acceleration is unavailable. Check chrome://gpu.');
+  } else {
+    var info = gl.getExtension('WEBGL_debug_renderer_info');
+    var renderer = info
+      ? gl.getParameter(info.UNMASKED_RENDERER_WEBGL)
+      : gl.getParameter(gl.RENDERER);
+    var vendor = info
+      ? gl.getParameter(info.UNMASKED_VENDOR_WEBGL)
+      : gl.getParameter(gl.VENDOR);
+
+    row(result, 'Renderer', renderer, 'mono');
+    row(result, 'Vendor', vendor, 'mono');
+    row(result, 'Context', gl instanceof WebGL2RenderingContext ? 'WebGL 2' : 'WebGL 1');
+
+    row(details, 'GL version', gl.getParameter(gl.VERSION), 'mono');
+    row(details, 'Shading language',
+        gl.getParameter(gl.SHADING_LANGUAGE_VERSION), 'mono');
+    row(details, 'Max texture size', gl.getParameter(gl.MAX_TEXTURE_SIZE));
+    row(details, 'Max renderbuffer size',
+        gl.getParameter(gl.MAX_RENDERBUFFER_SIZE));
+    row(details, 'Extensions', String((gl.getSupportedExtensions() || []).length));
+  }
+
+  if (navigator.gpu && navigator.gpu.requestAdapter) {
+    navigator.gpu.requestAdapter().then(function (adapter) {
+      if (!adapter) {
+        row(details, 'WebGPU', 'no adapter');
+        return;
+      }
+      var i = adapter.info || {};
+      row(details, 'WebGPU adapter',
+          [i.vendor, i.architecture, i.device].filter(Boolean).join(' ') ||
+          'available', 'mono');
+    }).catch(function () {
+      row(details, 'WebGPU', 'unavailable');
+    });
+  } else {
+    row(details, 'WebGPU', 'not supported in this build');
+  }
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,77 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>About</title>
+<link rel="stylesheet" href="base.css">
+</head>
+<body>
+<div class="page">
+  <h1>CAD Browser</h1>
+  <p>A minimal Chromium browser tuned for CAD, CAM and WebGL work. No sync, no
+     sign-in, no extensions, no telemetry.</p>
+
+  <h2>What it does differently</h2>
+  <div class="card">
+    <div class="row">
+      <div class="label">Runs on the right GPU</div>
+      <div class="value">Enumerates every adapter, picks the one with the most
+        dedicated video memory, and asks Windows to run on it. Then it checks
+        what is actually rendering and tells you when the two disagree.</div>
+    </div>
+    <div class="row">
+      <div class="label">Reports memory honestly</div>
+      <div class="value">Installed, usable and hardware-reserved RAM from three
+        independent sources, with per-slot detail and the motherboard maximum
+        read from the firmware. Any disagreement is shown, not hidden.</div>
+    </div>
+    <div class="row">
+      <div class="label">Sleeps idle tabs</div>
+      <div class="value">Background tabs are unloaded under memory pressure and
+        reloaded on click. A restored session costs one renderer, not one per
+        tab.</div>
+    </div>
+    <div class="row">
+      <div class="label">Blocks tracker hosts</div>
+      <div class="value">A host list applied per request. First-party requests
+        are never blocked.</div>
+    </div>
+    <div class="row">
+      <div class="label">Measures itself</div>
+      <div class="value">An optional overlay shows real frame times, GPU load,
+        video memory, CPU and tab counts, taken from the same counters Task
+        Manager reads.</div>
+    </div>
+  </div>
+
+  <h2>Keyboard</h2>
+  <div class="card">
+    <div class="row"><div class="label">Ctrl+T / Ctrl+W</div><div class="value">New tab, close tab</div></div>
+    <div class="row"><div class="label">Ctrl+Shift+T</div><div class="value">Reopen the last closed tab</div></div>
+    <div class="row"><div class="label">Ctrl+Tab / Ctrl+Shift+Tab</div><div class="value">Next and previous tab</div></div>
+    <div class="row"><div class="label">Ctrl+1 to Ctrl+9</div><div class="value">Jump to a tab; Ctrl+9 is the last one</div></div>
+    <div class="row"><div class="label">Ctrl+L</div><div class="value">Focus the address bar</div></div>
+    <div class="row"><div class="label">Ctrl+Shift+S</div><div class="value">Toggle the stats overlay</div></div>
+    <div class="row"><div class="label">Ctrl+R / F5</div><div class="value">Reload; add Shift to bypass the cache</div></div>
+    <div class="row"><div class="label">Alt+Left / Alt+Right</div><div class="value">Back and forward</div></div>
+    <div class="row"><div class="label">F12</div><div class="value">Developer tools</div></div>
+  </div>
+
+  <h2>Built on</h2>
+  <div class="card" id="versions">
+    <div class="row"><div class="label">Engine</div><div class="value" id="ua">Chromium</div></div>
+    <div class="row"><div class="label">Internal pages</div>
+      <div class="value"><a href="cad://sysinfo">cad://sysinfo</a> &middot;
+        <a href="cad://settings">cad://settings</a> &middot;
+        <a href="cad://gpuprobe">cad://gpuprobe</a></div></div>
+    <div class="row"><div class="label">Chromium diagnostics</div>
+      <div class="value">chrome://gpu, chrome://version,
+        chrome://process-internals</div></div>
+  </div>
+</div>
+<script src="cad.js"></script>
+<script>
+document.getElementById('ua').textContent = navigator.userAgent;
+</script>
+</body>
+</html>

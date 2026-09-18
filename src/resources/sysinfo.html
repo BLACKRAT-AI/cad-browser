@@ -1,0 +1,219 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>System info</title>
+<link rel="stylesheet" href="base.css">
+</head>
+<body>
+<div class="page">
+  <h1>System information</h1>
+  <p>Read from the firmware, DXGI and the Windows performance counters. Every
+     number here should agree with Task Manager, dxdiag and the BIOS. Where two
+     sources disagree, both are shown.</p>
+  <div id="content"><div class="empty">Reading hardware...</div></div>
+</div>
+
+<script src="cad.js"></script>
+<script>
+(function () {
+  'use strict';
+
+  var el = window.cad.el;
+  var row = window.cad.row;
+  var content = document.getElementById('content');
+
+  function section(title) {
+    content.appendChild(el('h2', null, title));
+    var card = el('div', 'card');
+    content.appendChild(card);
+    return card;
+  }
+
+  function tag(text, kind) {
+    return el('span', 'tag' + (kind ? ' ' + kind : ''), text);
+  }
+
+  function renderMemory(memory) {
+    var card = section('Memory');
+    row(card, 'Installed', memory.installed);
+    row(card, 'Reported by', memory.installedSource, 'subtle');
+    row(card, 'Usable by Windows', memory.usable);
+    row(card, 'Hardware reserved', memory.reserved);
+    row(card, 'Motherboard maximum', memory.maxCapacity);
+    row(card, 'Slots', memory.slotsUsed + ' used of ' + memory.slotsTotal);
+    if (memory.channels) {
+      row(card, 'Channels', memory.channels);
+    }
+    row(card, 'SMBIOS version', memory.smbiosVersion || 'unknown');
+
+    if (memory.modules && memory.modules.length) {
+      content.appendChild(el('h2', null, 'Memory devices'));
+      var wrapper = el('div', 'card');
+      var table = el('table');
+      var head = el('tr');
+      ['Slot', 'Size', 'Type', 'Rated', 'Running', 'Manufacturer', 'Part']
+        .forEach(function (name) { head.appendChild(el('th', null, name)); });
+      table.appendChild(head);
+
+      memory.modules.forEach(function (module) {
+        var tr = el('tr');
+        tr.appendChild(el('td', 'mono', module.slot));
+        tr.appendChild(el('td', null, module.size));
+        tr.appendChild(el('td', null, module.populated ? module.type : ''));
+        tr.appendChild(el('td', null,
+          module.populated && module.rated ? module.rated + ' MT/s' : ''));
+        tr.appendChild(el('td', null,
+          module.populated && module.running ? module.running + ' MT/s' : ''));
+        tr.appendChild(el('td', null, module.manufacturer || ''));
+        tr.appendChild(el('td', 'mono', module.part || ''));
+        table.appendChild(tr);
+      });
+      wrapper.appendChild(table);
+      content.appendChild(wrapper);
+    }
+
+    if (memory.warnings && memory.warnings.length) {
+      content.appendChild(el('h2', null, 'Notes'));
+      memory.warnings.forEach(function (warning) {
+        content.appendChild(el('div', 'note', warning));
+      });
+    }
+  }
+
+  // Kept so the probe result can be filled in later without re-rendering the
+  // whole page, which would throw away the reader's scroll position.
+  var verifyCard = null;
+
+  function renderVerify(gpu) {
+    if (!verifyCard) {
+      return;
+    }
+    verifyCard.textContent = '';
+    if (!gpu.probed) {
+      row(verifyCard, 'WebGL reports', 'still checking');
+      return;
+    }
+
+    row(verifyCard, 'WebGL reports', gpu.probed, 'mono');
+
+    var status = el('div', 'value');
+    status.appendChild(gpu.matches
+      ? tag('matches the chosen adapter', 'good')
+      : tag('does NOT match the chosen adapter', 'warn'));
+    var statusRow = el('div', 'row');
+    statusRow.appendChild(el('div', 'label', 'Result'));
+    statusRow.appendChild(status);
+    verifyCard.appendChild(statusRow);
+
+    if (!gpu.matches) {
+      var fix = el('button');
+      fix.textContent = 'Open Windows graphics settings';
+      fix.addEventListener('click', function () {
+        window.cad.send('openGraphicsSettings', {});
+      });
+      var fixRow = el('div', 'row');
+      fixRow.appendChild(el('div', 'label', 'Fix'));
+      var fixValue = el('div', 'value');
+      fixValue.appendChild(fix);
+      fixRow.appendChild(fixValue);
+      verifyCard.appendChild(fixRow);
+
+      var note = el('div', 'note',
+        'Windows decides the adapter per executable. CAD Browser asks for ' +
+        'high performance, but an OEM control panel can override that. The ' +
+        'button above opens the Windows setting that wins.');
+      verifyCard.appendChild(note);
+    }
+  }
+
+  function renderGpu(gpu) {
+    content.appendChild(el('h2', null, 'Graphics'));
+    var card = el('div', 'card');
+    content.appendChild(card);
+
+    (gpu.adapters || []).forEach(function (adapter) {
+      var name = el('div', 'value');
+      name.appendChild(el('span', null, adapter.name + '  '));
+      if (adapter.preferred) {
+        name.appendChild(tag('CAD Browser choice', 'accent'));
+        name.appendChild(document.createTextNode(' '));
+      }
+      if (adapter.osHighPerformance) {
+        name.appendChild(tag('Windows high performance'));
+        name.appendChild(document.createTextNode(' '));
+      }
+      if (adapter.software) {
+        name.appendChild(tag('software'));
+      }
+
+      var container = el('div', 'row');
+      container.appendChild(el('div', 'label', 'Adapter'));
+      container.appendChild(name);
+      card.appendChild(container);
+
+      row(card, 'Dedicated video memory', adapter.vram);
+      row(card, 'Shared system memory', adapter.shared);
+      row(card, 'Vendor / device',
+          adapter.vendor + '  ' + adapter.vendorId + ' / ' + adapter.deviceId,
+          'mono');
+      row(card, 'Driver', adapter.driver || 'unknown', 'mono');
+      row(card, 'Displays attached', String(adapter.outputs));
+    });
+
+    content.appendChild(el('h2', null, 'Adapter actually rendering'));
+    verifyCard = el('div', 'card');
+    content.appendChild(verifyCard);
+    renderVerify(gpu);
+  }
+
+  window.cadPage = {
+    render: function (data) {
+      content.textContent = '';
+      if (!data) {
+        return;
+      }
+
+      var system = section('System');
+      row(system, 'Windows', data.system.os);
+      row(system, 'Edition', data.system.edition);
+      row(system, 'Machine', data.system.machine);
+      row(system, 'Baseboard', data.system.baseboard);
+      row(system, 'BIOS', data.system.bios);
+
+      var cpu = section('Processor');
+      row(cpu, 'Model', data.cpu.brand);
+      row(cpu, 'Cores',
+          data.cpu.cores + ' physical, ' + data.cpu.threads + ' logical');
+      if (data.cpu.hybrid) {
+        row(cpu, 'Hybrid topology',
+            data.cpu.performanceCores + ' performance + ' +
+            data.cpu.efficiencyCores + ' efficiency');
+      }
+      if (data.cpu.baseMhz) {
+        row(cpu, 'Base clock', data.cpu.baseMhz + ' MHz');
+      }
+      row(cpu, 'L3 cache', data.cpu.l3);
+
+      renderMemory(data.memory);
+      renderGpu(data.gpu);
+
+      var blocking = section('Content blocking');
+      row(blocking, 'Status', data.blocking.enabled ? 'On' : 'Off');
+      row(blocking, 'Hosts in list', String(data.blocking.hosts));
+      row(blocking, 'Blocked this session', String(data.blocking.blocked));
+    },
+
+    // The WebGL probe answers after the page has rendered. Only this one card
+    // is rewritten so the page does not jump back to the top underneath the
+    // person reading it.
+    updateGpu: function (gpu) {
+      renderVerify(gpu || {});
+    }
+  };
+
+  window.cad.send('sysinfo.request', {});
+})();
+</script>
+</body>
+</html>

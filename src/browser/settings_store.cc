@@ -112,6 +112,12 @@ Settings SettingsStore::FromJson(const JsonValue& json) {
         2, 1000);
     s.cache_path = perf->GetString("cache_path", s.cache_path);
   }
+  if (const JsonValue* capture = json.GetChildObject("capture")) {
+    s.capture_folder = capture->GetString("folder", s.capture_folder);
+    if (s.capture_folder.empty()) {
+      s.capture_folder = kDefaultCaptureFolder;
+    }
+  }
 
   if (const JsonValue* privacy = json.GetChildObject("privacy")) {
     s.blocklist_enabled =
@@ -190,6 +196,9 @@ JsonValue SettingsStore::ToJson(const Settings& s) {
   performance.Set("discard_tab_count", JsonValue::Int(s.discard_tab_count));
   performance.Set("cache_path", JsonValue::String(s.cache_path));
 
+  JsonValue capture = JsonValue::Object();
+  capture.Set("folder", JsonValue::String(s.capture_folder));
+
   JsonValue privacy = JsonValue::Object();
   privacy.Set("blocklist_enabled", JsonValue::Bool(s.blocklist_enabled));
   JsonValue sites = JsonValue::Array();
@@ -216,6 +225,7 @@ JsonValue SettingsStore::ToJson(const Settings& s) {
   root.Set("general", std::move(general));
   root.Set("performance", std::move(performance));
   root.Set("privacy", std::move(privacy));
+  root.Set("capture", std::move(capture));
   root.Set("overlay", std::move(overlay));
   root.Set("window", std::move(window));
   root.Set("first_run_complete", JsonValue::Bool(s.first_run_complete));

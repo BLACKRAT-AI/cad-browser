@@ -70,6 +70,8 @@ add_library(cad_core STATIC
   browser/discard_policy.cc
   browser/settings_store.h
   browser/settings_store.cc
+  browser/page_capture.h
+  browser/page_capture.cc
   )
 SET_LIBRARY_TARGET_PROPERTIES(cad_core)
 target_include_directories(cad_core PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}")
@@ -167,7 +169,10 @@ add_library(CADBrowser SHARED
   ui/overlay_view.h
   ui/overlay_view.cc
   ui/main_window.h
+  ui/capture_status.h
+  ui/capture_status.cc
   ui/main_window.cc
+  ui/main_window_capture.cc
   )
 SET_LIBRARY_TARGET_PROPERTIES(CADBrowser)
 add_dependencies(CADBrowser libcef_dll_wrapper)

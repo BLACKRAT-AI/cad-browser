@@ -67,6 +67,13 @@ CefRefPtr<CefMenuModel> HamburgerMenu::Build(const MenuState& state) {
 
   model->AddSeparator();
 
+  model->AddItem(kMenuCapturePage, "Capture page");
+  model->SetAccelerator(kMenuCapturePage, kVkS, false, true, false);
+  model->AddCheckItem(kMenuToggleAutoCapture, "Auto-capture pages");
+  model->SetChecked(kMenuToggleAutoCapture, state.auto_capture);
+
+  model->AddSeparator();
+
   model->AddItem(kMenuSettings, "Settings");
   model->AddItem(kMenuAbout, "About CAD Browser");
   model->AddItem(kMenuExit, "Exit");

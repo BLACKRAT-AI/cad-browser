@@ -374,6 +374,23 @@ void TabManager::OnTabUiMessage(int tab_id,
   }
 }
 
+void TabManager::OnTabPageSettled(int tab_id) {
+  if (window_) {
+    window_->OnTabPageSettled(tab_id);
+  }
+}
+
+void TabManager::OnTabPageCaptured(int tab_id,
+                                   bool automatic,
+                                   bool ok,
+                                   const std::string& error,
+                                   PageCapture page) {
+  if (window_) {
+    window_->OnPageCaptured(FindTab(tab_id), automatic, ok, error,
+                            std::move(page));
+  }
+}
+
 void TabManager::SetFrameProbeEnabled(bool enabled) {
   for (const std::unique_ptr<Tab>& tab : tabs_) {
     tab->SetFrameProbeEnabled(enabled);

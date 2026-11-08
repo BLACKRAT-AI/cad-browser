@@ -51,6 +51,7 @@ enum AcceleratorId {
   // the address bar and the window's own close button.
   kAccelToggleChrome,
   kAccelToggleFullscreen,
+  kAccelCapturePage,
   kAccelTab1,  // through kAccelTab1 + 8 for Ctrl+1..Ctrl+9
 };
 
@@ -258,6 +259,10 @@ void MainWindow::OnWindowCreated(CefRefPtr<CefWindow> window) {
 
   // The chrome overlay goes on last so it sits above the stats bar.
   BuildChromeOverlay();
+  capture_status_.Attach(window_, theme_);
+  if (AppState* app = AppState::Get()) {
+    capture_status_.SetAutoCapture(app->auto_capture());
+  }
   reveal_until_ms_ = NowMs() + kInitialRevealMs;
   SetChromeRevealed(true);
   SetChromeCompact(false);
@@ -277,6 +282,7 @@ void MainWindow::OnWindowCreated(CefRefPtr<CefWindow> window) {
 void MainWindow::OnWindowDestroyed(CefRefPtr<CefWindow> window) {
   closing_ = true;
   RemoveMiddleClickHook();
+  capture_status_.Detach();
   if (overlay_) {
     overlay_->Destroy();
     overlay_.reset();
@@ -511,6 +517,7 @@ void MainWindow::LayoutChromeOverlay() {
     return;
   }
   chrome_controller_->SetBounds(CefRect(0, 0, width, metrics::kChromeHeight));
+  LayoutCaptureStatus();
 }
 
 // ---------------------------------------------------------------------------
@@ -830,6 +837,9 @@ void MainWindow::RegisterAccelerators() {
   add(kAccelZoomIn, kVkPlus, false, true, false);
   add(kAccelZoomOut, kVkMinus, false, true, false);
   add(kAccelZoomReset, kVk0, false, true, false);
+  // Ctrl+S, "save page" in every other browser. Ctrl+Shift+S stays with the
+  // stats overlay, which PLAN.md section 8 gave it first.
+  add(kAccelCapturePage, kVkS, false, true, false);
   // F11 is full screen, as it is in every other browser. Pinning this
   // browser's own auto-hiding chrome open is a different, rarer thing and
   // moved to Ctrl+F11 rather than sitting on the key people expect.
@@ -908,6 +918,9 @@ bool MainWindow::OnAccelerator(CefRefPtr<CefWindow> window, int command_id) {
       return true;
     case kAccelDevTools:
       OnMenuCommand(kMenuDevTools);
+      return true;
+    case kAccelCapturePage:
+      OnMenuCommand(kMenuCapturePage);
       return true;
     case kAccelFind:
       OnMenuCommand(kMenuFind);
@@ -1069,6 +1082,7 @@ void MainWindow::OnMenuRequested(
     state.gpu_mismatch = !app->gpu_matches_preferred();
     state.bookmarks_bar_visible = app->settings().show_bookmarks_bar;
     state.onshape_focus_mode = app->settings().onshape_focus_mode;
+    state.auto_capture = app->auto_capture();
   }
   state.zoom_percent = zoom_percent_;
 
@@ -1150,6 +1164,14 @@ void MainWindow::OnMenuCommand(int command_id) {
         state->mutable_settings().show_bookmarks_bar =
             !state->settings().show_bookmarks_bar;
         state->ApplySettingsChanges();
+      }
+      break;
+    case kMenuCapturePage:
+      CaptureActivePage();
+      break;
+    case kMenuToggleAutoCapture:
+      if (state) {
+        state->SetAutoCapture(!state->auto_capture());
       }
       break;
     case kMenuToggleOnshapeFocus:
@@ -1587,6 +1609,12 @@ void MainWindow::HandleUiMessage(Tab* tab,
       settings.overlay_show_tabs = json.GetBool("value", true);
     } else if (key == "cache_path") {
       settings.cache_path = json.GetString("value", settings.cache_path);
+    } else if (key == "capture_folder") {
+      settings.capture_folder =
+          json.GetString("value", settings.capture_folder);
+      if (settings.capture_folder.empty()) {
+        settings.capture_folder = kDefaultCaptureFolder;
+      }
     }
 
     state->ApplySettingsChanges();

@@ -219,6 +219,13 @@ void AppState::SaveSettings() {
   settings_store_.Save();
 }
 
+void AppState::SetAutoCapture(bool enabled) {
+  auto_capture_ = enabled;
+  for (MainWindow* window : windows_) {
+    window->OnAutoCaptureChanged(enabled);
+  }
+}
+
 void AppState::ApplySettingsChanges() {
   blocklist_.SetEnabled(settings().blocklist_enabled);
   sampler_.SetEnabled(settings().overlay_enabled);

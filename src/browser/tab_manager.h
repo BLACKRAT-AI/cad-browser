@@ -68,6 +68,13 @@ class TabManager {
   void OnTabUiMessage(int tab_id,
                       const std::string& name,
                       const std::string& payload);
+  // The main frame finished loading, or changed its URL without a load.
+  void OnTabPageSettled(int tab_id);
+  void OnTabPageCaptured(int tab_id,
+                         bool automatic,
+                         bool ok,
+                         const std::string& error,
+                         PageCapture page);
 
   // Pushes the current probe state to every live renderer.
   void SetFrameProbeEnabled(bool enabled);

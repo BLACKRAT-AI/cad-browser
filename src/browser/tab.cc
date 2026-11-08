@@ -297,6 +297,28 @@ void Tab::ExecuteJavaScript(const std::string& script) {
   }
 }
 
+bool Tab::RequestCapture(bool automatic) {
+  CefRefPtr<CefBrowser> current = browser();
+  if (!current) {
+    return false;
+  }
+  CefRefPtr<CefFrame> frame = current->GetMainFrame();
+  if (!frame) {
+    return false;
+  }
+  const int request_id = next_capture_id_++;
+  CefRefPtr<CefProcessMessage> message =
+      CefProcessMessage::Create(ipc::kCaptureRequest);
+  message->GetArgumentList()->SetInt(0, request_id);
+  frame->SendProcessMessage(PID_RENDERER, message);
+  // A renderer that dies or navigates away never answers; keep the list short.
+  if (pending_captures_.size() > 16) {
+    pending_captures_.erase(pending_captures_.begin());
+  }
+  pending_captures_.emplace_back(request_id, automatic);
+  return true;
+}
+
 // ---------------------------------------------------------------------------
 // ClientHandler::Delegate
 // ---------------------------------------------------------------------------
@@ -326,6 +348,9 @@ void Tab::OnUrlChanged(const std::string& url) {
   url_ = url;
   if (manager_) {
     manager_->OnTabChanged(id_);
+    // A single-page app changes its URL without a load; this is the only
+    // signal auto-capture gets for it.
+    manager_->OnTabPageSettled(id_);
   }
 }
 
@@ -338,11 +363,18 @@ void Tab::OnFaviconUrlsChanged(const std::vector<std::string>& urls) {
 void Tab::OnLoadingStateChanged(bool is_loading,
                                 bool can_go_back,
                                 bool can_go_forward) {
+  if (is_loading && !is_loading_) {
+    ++load_count_;
+  }
+  const bool finished = is_loading_ && !is_loading;
   is_loading_ = is_loading;
   can_go_back_ = can_go_back;
   can_go_forward_ = can_go_forward;
   if (manager_) {
     manager_->OnTabChanged(id_);
+    if (finished) {
+      manager_->OnTabPageSettled(id_);
+    }
   }
 }
 
@@ -430,6 +462,26 @@ void Tab::OnRenderProcessGone(const std::string& reason, bool out_of_memory) {
 
   if (manager_) {
     manager_->OnTabChanged(id_);
+  }
+}
+
+void Tab::OnPageCaptured(int request_id,
+                         bool ok,
+                         const std::string& error,
+                         PageCapture page) {
+  bool automatic = false;
+  bool known = false;
+  for (auto it = pending_captures_.begin(); it != pending_captures_.end();
+       ++it) {
+    if (it->first == request_id) {
+      automatic = it->second;
+      known = true;
+      pending_captures_.erase(it);
+      break;
+    }
+  }
+  if (known && manager_) {
+    manager_->OnTabPageCaptured(id_, automatic, ok, error, std::move(page));
   }
 }
 

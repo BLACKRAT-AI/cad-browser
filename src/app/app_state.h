@@ -102,6 +102,10 @@ class AppState {
   void SetOverlayEnabled(bool enabled);
   bool overlay_enabled() const { return settings().overlay_enabled; }
 
+  // Auto-capture, global like the overlay but never saved: off at launch.
+  void SetAutoCapture(bool enabled);
+  bool auto_capture() const { return auto_capture_; }
+
   // Delivered on the UI thread for each sampler tick.
   void OnStatsSnapshot(const sys::StatsSnapshot& snapshot);
 
@@ -137,6 +141,7 @@ class AppState {
   std::vector<MainWindow*> windows_;
 
   std::string probed_gpu_renderer_;
+  bool auto_capture_ = false;
   bool probe_completed_ = false;
   bool pre_initialized_ = false;
   bool initialized_ = false;

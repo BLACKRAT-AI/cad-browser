@@ -434,6 +434,84 @@ class BridgeHandler : public CefV8Handler {
   DISALLOW_COPY_AND_ASSIGN(BridgeHandler);
 };
 
+// Reads the page for "Capture page". One expression evaluated in the page's
+// context: it defines nothing on window, touches no DOM and leaves nothing
+// running, so it obeys the same rule as the overlay's probe.
+constexpr char kCaptureScript[] = R"JS(
+(function () {
+  var d = document;
+  var links = [];
+  var anchors = d.links || [];
+  for (var i = 0; i < anchors.length && links.length < 20000; i++) {
+    var a = anchors[i];
+    var t = String(a.innerText || a.textContent || '').replace(/\s+/g, ' ').trim();
+    if (t.length > 500) t = t.slice(0, 500);
+    links.push([t, String(a.href || '')]);
+  }
+  return [
+    String(location.href),
+    String(d.title || ''),
+    d.body ? String(d.body.innerText || '') : '',
+    d.documentElement ? String(d.documentElement.outerHTML || '') : '',
+    links
+  ];
+})()
+)JS";
+
+std::string V8String(CefRefPtr<CefV8Value> array, int index) {
+  CefRefPtr<CefV8Value> value = array->GetValue(index);
+  return value && value->IsString() ? value->GetStringValue().ToString()
+                                    : std::string();
+}
+
+// Runs kCaptureScript in `frame` and answers with kCaptureResult.
+void CaptureFrame(CefRefPtr<CefFrame> frame, int request_id) {
+  CefRefPtr<CefProcessMessage> reply =
+      CefProcessMessage::Create(ipc::kCaptureResult);
+  CefRefPtr<CefListValue> args = reply->GetArgumentList();
+  args->SetInt(0, request_id);
+  args->SetBool(1, false);
+
+  CefRefPtr<CefV8Context> context = frame->GetV8Context();
+  if (!context || !context->Enter()) {
+    args->SetString(2, "the page has no script context");
+    frame->SendProcessMessage(PID_BROWSER, reply);
+    return;
+  }
+  CefRefPtr<CefV8Value> result;
+  CefRefPtr<CefV8Exception> exception;
+  const bool ran = context->Eval(kCaptureScript, CefString(), 0, result,
+                                 exception);
+  if (!ran || !result || !result->IsArray() || result->GetArrayLength() < 5) {
+    args->SetString(2, exception ? exception->GetMessage().ToString()
+                                 : std::string("the page could not be read"));
+  } else {
+    args->SetBool(1, true);
+    args->SetString(2, V8String(result, 0));
+    args->SetString(3, V8String(result, 1));
+    args->SetString(4, V8String(result, 2));
+    args->SetString(5, V8String(result, 3));
+    CefRefPtr<CefListValue> links = CefListValue::Create();
+    CefRefPtr<CefV8Value> source = result->GetValue(4);
+    if (source && source->IsArray()) {
+      const int count = source->GetArrayLength();
+      for (int i = 0; i < count; ++i) {
+        CefRefPtr<CefV8Value> pair = source->GetValue(i);
+        if (!pair || !pair->IsArray() || pair->GetArrayLength() < 2) {
+          continue;
+        }
+        CefRefPtr<CefListValue> entry = CefListValue::Create();
+        entry->SetString(0, V8String(pair, 0));
+        entry->SetString(1, V8String(pair, 1));
+        links->SetList(links->GetSize(), entry);
+      }
+    }
+    args->SetList(6, links);
+  }
+  context->Exit();
+  frame->SendProcessMessage(PID_BROWSER, reply);
+}
+
 void RunScript(CefRefPtr<CefV8Context> context, const char* script) {
   CefRefPtr<CefV8Value> retval;
   CefRefPtr<CefV8Exception> exception;
@@ -536,6 +614,13 @@ bool RendererApp::OnProcessMessageReceived(
     return false;
   }
   const std::string name = message->GetName().ToString();
+  if (name == ipc::kCaptureRequest) {
+    CefRefPtr<CefListValue> args = message->GetArgumentList();
+    if (frame && frame->IsMain() && args && args->GetSize() >= 1) {
+      CaptureFrame(frame, args->GetInt(0));
+    }
+    return true;
+  }
   if (name != ipc::kSetProbeEnabled && name != ipc::kSetSiteFocus) {
     return false;
   }

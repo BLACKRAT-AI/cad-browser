@@ -32,6 +32,8 @@ enum MenuCommand {
   kMenuExit,
   kMenuToggleBookmarksBar,
   kMenuToggleOnshapeFocus,
+  kMenuCapturePage,
+  kMenuToggleAutoCapture,
 };
 
 // What the menu needs to know to draw itself.
@@ -43,6 +45,7 @@ struct MenuState {
   int zoom_percent = 100;
   bool bookmarks_bar_visible = false;
   bool onshape_focus_mode = false;
+  bool auto_capture = false;
 };
 
 class HamburgerMenu : public CefMenuModelDelegate {

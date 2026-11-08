@@ -10,6 +10,7 @@
 #include <vector>
 
 #include "browser/json.h"
+#include "browser/page_capture.h"
 
 namespace cad {
 
@@ -73,6 +74,12 @@ struct Settings {
   bool overlay_show_memory = true;
   bool overlay_show_cpu = true;
   bool overlay_show_tabs = true;
+
+  // ---- page capture ----
+  // Where "Capture page" and auto-capture write their JSON files. Created on
+  // first use. Auto-capture itself is not a setting: it starts off at every
+  // launch, so the browser never records pages unless asked to this session.
+  std::string capture_folder = kDefaultCaptureFolder;
 
   // ---- window ----
   int window_width = 1400;

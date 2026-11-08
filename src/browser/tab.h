@@ -81,6 +81,12 @@ class Tab : public ClientHandler::Delegate {
   void SetSiteFocusEnabled(bool enabled);
   // Runs script in the main frame. Used to push data into cad:// pages.
   void ExecuteJavaScript(const std::string& script);
+  // Asks the renderer for the page's content. The answer arrives through
+  // TabManager::OnTabPageCaptured. False when there is no live page.
+  bool RequestCapture(bool automatic);
+  // Counts main-frame loads started, so auto-capture can tell a reload of the
+  // same URL from a repeated notification about the page already saved.
+  uint64_t load_count() const { return load_count_; }
 
   // ---- ClientHandler::Delegate ----
   void OnBrowserCreated(CefRefPtr<CefBrowser> browser) override;
@@ -106,6 +112,10 @@ class Tab : public ClientHandler::Delegate {
   void OnDownloadFinished(const std::string& file_name, bool success) override;
   void OnRenderProcessGone(const std::string& reason,
                            bool out_of_memory) override;
+  void OnPageCaptured(int request_id,
+                      bool ok,
+                      const std::string& error,
+                      PageCapture page) override;
 
   bool crashed() const { return crashed_; }
 
@@ -128,6 +138,10 @@ class Tab : public ClientHandler::Delegate {
   bool performance_pinned_ = false;
   bool crashed_ = false;
   int active_downloads_ = 0;
+  uint64_t load_count_ = 0;
+  int next_capture_id_ = 1;
+  // Capture requests in flight: request id and whether it was automatic.
+  std::vector<std::pair<int, bool>> pending_captures_;
 
   uint64_t created_ms_ = 0;
   uint64_t last_active_ms_ = 0;

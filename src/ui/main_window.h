@@ -12,6 +12,7 @@
 //     overlay         floating, added through CefWindow::AddOverlayView
 #pragma once
 
+#include <map>
 #include <memory>
 #include <string>
 #include <vector>
@@ -27,6 +28,7 @@
 #include "ui/hamburger_menu.h"
 #include "ui/overlay_view.h"
 #include "ui/tab_strip.h"
+#include "ui/capture_status.h"
 #include "ui/theme.h"
 #include "ui/toolbar.h"
 
@@ -71,6 +73,15 @@ class MainWindow : public CefWindowDelegate,
   void OnSettingsChanged();
   void OnGpuStatusChanged();
   void SetOverlayVisible(bool visible);
+  void OnAutoCaptureChanged(bool enabled);
+
+  // ---- page capture (main_window_capture.cc) ----
+  void OnTabPageSettled(int tab_id);
+  void OnPageCaptured(Tab* tab,
+                      bool automatic,
+                      bool ok,
+                      const std::string& error,
+                      PageCapture page);
 
   // ---- CefWindowDelegate ----
   void OnWindowCreated(CefRefPtr<CefWindow> window) override;
@@ -166,6 +177,9 @@ class MainWindow : public CefWindowDelegate,
   void PushSystemInfo(Tab* tab);
   void PushSettings(Tab* tab);
   void RestoreFrom(const SessionWindow& restore);
+  void CaptureActivePage();
+  void LayoutCaptureStatus();
+  void ShowCaptureMessage(const std::string& message, bool error);
 
   CefRefPtr<CefWindow> window_;
   CefRefPtr<CefPanel> root_panel_;
@@ -186,6 +200,16 @@ class MainWindow : public CefWindowDelegate,
   CefRefPtr<HamburgerMenu> menu_;
   std::unique_ptr<OverlayView> overlay_;
   std::unique_ptr<TabManager> tab_manager_;
+  CaptureStatus capture_status_;
+  // Per tab: the debounce generation, and the URL and load count last
+  // auto-captured, so one page is saved once however many events it fires.
+  struct AutoCaptureState {
+    uint64_t generation = 0;
+    std::string last_url;
+    uint64_t last_load_count = 0;
+  };
+  std::map<int, AutoCaptureState> auto_capture_;
+  uint64_t capture_message_generation_ = 0;
 
   Theme theme_;
   std::unique_ptr<SessionWindow> pending_restore_;

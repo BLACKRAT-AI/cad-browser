@@ -337,6 +337,37 @@ bool ClientHandler::OnProcessMessageReceived(
     return true;
   }
 
+  if (name == ipc::kCaptureResult && args->GetSize() >= 3) {
+    const int request_id = args->GetInt(0);
+    const bool ok = args->GetBool(1);
+    if (!ok) {
+      delegate_->OnPageCaptured(request_id, false,
+                                args->GetString(2).ToString(), PageCapture());
+      return true;
+    }
+    PageCapture page;
+    page.url = args->GetString(2).ToString();
+    if (args->GetSize() >= 7) {
+      page.title = args->GetString(3).ToString();
+      page.text = args->GetString(4).ToString();
+      page.html = args->GetString(5).ToString();
+      if (CefRefPtr<CefListValue> links = args->GetList(6)) {
+        const size_t count = links->GetSize();
+        page.links.reserve(count);
+        for (size_t i = 0; i < count; ++i) {
+          CefRefPtr<CefListValue> entry = links->GetList(i);
+          if (entry && entry->GetSize() >= 2) {
+            page.links.push_back({entry->GetString(0).ToString(),
+                                  entry->GetString(1).ToString()});
+          }
+        }
+      }
+    }
+    delegate_->OnPageCaptured(request_id, true, std::string(),
+                              std::move(page));
+    return true;
+  }
+
   if (name == ipc::kUiEvent && args->GetSize() >= 2) {
     delegate_->OnUiMessage(args->GetString(0).ToString(),
                            args->GetString(1).ToString());

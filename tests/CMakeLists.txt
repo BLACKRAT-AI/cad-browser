@@ -14,6 +14,7 @@ add_executable(cad_tests
   blocklist_test.cc
   url_util_test.cc
   json_test.cc
+  page_capture_test.cc
   discard_policy_test.cc
   )
 SET_EXECUTABLE_TARGET_PROPERTIES(cad_tests)

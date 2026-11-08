@@ -22,6 +22,8 @@
 #include "include/cef_load_handler.h"
 #include "include/cef_request_handler.h"
 
+#include "browser/page_capture.h"
+
 namespace cad {
 
 class Blocklist;
@@ -63,6 +65,12 @@ class ClientHandler : public CefClient,
     // The tab's renderer died. Without this a crashed tab just goes blank.
     virtual void OnRenderProcessGone(const std::string& reason,
                                      bool out_of_memory) = 0;
+    // The renderer answered a capture request. `page` is filled only when
+    // `ok`; otherwise `error` says why the page could not be read.
+    virtual void OnPageCaptured(int request_id,
+                                bool ok,
+                                const std::string& error,
+                                PageCapture page) {}
 
    protected:
     virtual ~Delegate() = default;

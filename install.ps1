@@ -48,7 +48,10 @@ try {
   Invoke-WebRequest $zipAsset.browser_download_url -OutFile $zip -UseBasicParsing
 
   if ($sumAsset) {
-    $expected = ((Invoke-WebRequest $sumAsset.browser_download_url -UseBasicParsing).Content -split '\s+')[0].Trim().ToLowerInvariant()
+    # Release assets are served as bytes, so read the checksum from a file, not .Content.
+    $sumFile = Join-Path $work $sumAsset.name
+    Invoke-WebRequest $sumAsset.browser_download_url -OutFile $sumFile -UseBasicParsing
+    $expected = ((Get-Content $sumFile -Raw).Trim() -split '\s+')[0].ToLowerInvariant()
     $actual = (Get-FileHash $zip -Algorithm SHA256).Hash.ToLowerInvariant()
     if ($expected -ne $actual) { throw "Checksum mismatch: expected $expected, got $actual. Nothing was installed." }
     Write-Host 'Checksum OK.'

@@ -428,7 +428,7 @@ Verified on the development machine:
 
 ```
 HKCU\Software\Microsoft\DirectX\UserGpuPreferences
-  Z:\...\out\Release\CADBrowser.exe = GpuPreference=2;
+  <install folder>\CADBrowser.exe = GpuPreference=2;
 ```
 
 and `cad://gpuprobe` reports

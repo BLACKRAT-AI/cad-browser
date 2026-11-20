@@ -101,6 +101,14 @@ std::wstring AppState::CachePath() const {
   return user_data_dir_.empty() ? std::wstring() : user_data_dir_ + L"\\Cache";
 }
 
+std::wstring AppState::CaptureFolder() const {
+  const std::string& configured = settings().capture_folder;
+  if (!configured.empty()) {
+    return sys::ToUtf16(configured);
+  }
+  return user_data_dir_.empty() ? std::wstring() : user_data_dir_ + L"\\Captures";
+}
+
 void AppState::PreInitialize() {
   if (pre_initialized_) {
     return;

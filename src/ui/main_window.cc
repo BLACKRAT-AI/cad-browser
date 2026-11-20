@@ -1612,9 +1612,6 @@ void MainWindow::HandleUiMessage(Tab* tab,
     } else if (key == "capture_folder") {
       settings.capture_folder =
           json.GetString("value", settings.capture_folder);
-      if (settings.capture_folder.empty()) {
-        settings.capture_folder = kDefaultCaptureFolder;
-      }
     }
 
     state->ApplySettingsChanges();

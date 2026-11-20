@@ -159,7 +159,7 @@
       var c = section('Page capture');
       control(c, 'Capture folder',
         'Where Capture page (Ctrl+S) and auto-capture save each page as JSON. ' +
-        'Created on first use. Empty restores the default.',
+        'Created on first use. Empty uses %LOCALAPPDATA%\\CADBrowser\\Captures.',
         text('capture_folder', capture.folder, 420));
 
       var v = section('Privacy');

@@ -115,7 +115,11 @@ void MainWindow::OnPageCaptured(Tab* tab,
   }
   AppState* state = AppState::Get();
   const std::string folder =
-      state ? state->settings().capture_folder : std::string(kDefaultCaptureFolder);
+      state ? sys::ToUtf8(state->CaptureFolder()) : std::string();
+  if (folder.empty()) {
+    ShowCaptureMessage("Capture failed: no capture folder is available", true);
+    return;
+  }
 
   const std::time_t now = std::time(nullptr);
   std::tm local_tm{};

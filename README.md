@@ -3,7 +3,7 @@
 A minimal Chromium browser for Windows, tuned for CAD, CAM, WebGL and WebGPU
 work. No sync, no sign-in, no extensions, no telemetry.
 
-Built on CEF 144 (Chromium 144) using the Views framework in Alloy runtime
+Built on CEF 152 (Chromium 152) using the Views framework in Alloy runtime
 style, so every pixel of the browser chrome is ours and none of Chrome's
 services are present.
 
@@ -44,6 +44,20 @@ being nearly full screen all the time.
 Measured against Chrome on the development machine: 235 ms to a window against
 378 ms, 412 MB idle against 446 MB. See `docs/flags.md` for the method and the
 caveats, which matter.
+
+## Install
+
+Windows 10 or 11, 64-bit. In PowerShell:
+
+```powershell
+irm https://raw.githubusercontent.com/BLACKRAT-AI/cad-browser/main/install.ps1 | iex
+```
+
+It downloads the latest release, checks its SHA-256, installs it for the
+current user in `%LOCALAPPDATA%\Programs\CADBrowser` (no administrator rights)
+and adds Start menu and desktop shortcuts. Run the same line again to update.
+To uninstall, delete that folder and the two shortcuts. The build is not code
+signed, so Windows SmartScreen may ask once before the first start.
 
 ## Build
 

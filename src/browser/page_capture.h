@@ -15,10 +15,6 @@
 
 namespace cad {
 
-// Used when settings.json has no capture folder of its own.
-inline constexpr char kDefaultCaptureFolder[] =
-    "Z:/Documents/AppDevelopment/overhaul-trial/briefs/wants-data/captures";
-
 // Auto-capture waits this long after the last navigation event before it
 // captures, so a single-page app that rewrites its history several times while
 // it settles is saved once, with its content in place.

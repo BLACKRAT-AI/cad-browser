@@ -79,7 +79,8 @@ struct Settings {
   // Where "Capture page" and auto-capture write their JSON files. Created on
   // first use. Auto-capture itself is not a setting: it starts off at every
   // launch, so the browser never records pages unless asked to this session.
-  std::string capture_folder = kDefaultCaptureFolder;
+  // Empty means %LOCALAPPDATA%\CADBrowser\Captures (AppState::CaptureFolder).
+  std::string capture_folder;
 
   // ---- window ----
   int window_width = 1400;

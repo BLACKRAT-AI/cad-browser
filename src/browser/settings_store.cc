@@ -114,9 +114,6 @@ Settings SettingsStore::FromJson(const JsonValue& json) {
   }
   if (const JsonValue* capture = json.GetChildObject("capture")) {
     s.capture_folder = capture->GetString("folder", s.capture_folder);
-    if (s.capture_folder.empty()) {
-      s.capture_folder = kDefaultCaptureFolder;
-    }
   }
 
   if (const JsonValue* privacy = json.GetChildObject("privacy")) {

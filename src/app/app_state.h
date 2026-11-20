@@ -70,6 +70,9 @@ class AppState {
   std::wstring SettingsPath() const;
   std::wstring SessionPath() const;
   std::wstring CachePath() const;
+  // The configured capture folder, or %LOCALAPPDATA%\CADBrowser\Captures when
+  // none is set. Empty only if the user data folder is unavailable.
+  std::wstring CaptureFolder() const;
   std::wstring UserBlocklistPath() const;
 
   // ---- windows ----
